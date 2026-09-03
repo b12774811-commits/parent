@@ -175,7 +175,7 @@ async function connecter(){
   btn.textContent = 'Connexion…';
 
   try{
-   const res = await fetch(${API_BASE}/api/children/${childId}/verify-pin, {
+   const res = await fetch(`${API_BASE}/api/children/${childId}/verify-pin`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ pin })
