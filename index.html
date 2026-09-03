@@ -134,7 +134,7 @@
 // ---------------------------------------------------------------
 // À CONFIGURER : adresse de votre serveur (server.js)
 // ex: "https://votre-serveur.example.com" ou "http://192.168.1.10:3000"
-const API_BASE = "http://localhost:3000";
+const API_BASE = "https://backend-suivi-1.onrender.com";
 // ---------------------------------------------------------------
 
 const INTERVALLE_RAFRAICHISSEMENT = 8000; // 8s
@@ -175,7 +175,7 @@ async function connecter(){
   btn.textContent = 'Connexion…';
 
   try{
-    const res = await fetch(`${API_BASE}/api/children/${childId}/verify-pin`, {
+    const res = await API_BASE/api/children/${childId}/verify-pin`, {
       method: 'POST',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ pin })
