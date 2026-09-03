@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Où est mon enfant</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<style>
+  :root{
+    --nuit: #163832;
+    --nuit-2: #1f4a42;
+    --sable: #F6F1E6;
+    --sable-2: #EDE5D3;
+    --corail: #E2734F;
+    --corail-fonce: #C15B3A;
+    --vert-ok: #4C8C6B;
+    --texte-doux: #5C6B65;
+    --radius: 18px;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background:var(--sable);
+    color:var(--nuit);
+  }
+  #app{ display:flex; flex-direction:column; height:100%; }
+
+  /* ---------- ECRAN DE CONNEXION ---------- */
+  #ecran-connexion{
+    flex:1; display:flex; flex-direction:column; justify-content:center;
+    padding:32px 24px; max-width:420px; margin:0 auto; width:100%;
+  }
+  .marque{ display:flex; align-items:center; gap:10px; margin-bottom:38px; }
+  .marque .point{
+    width:14px; height:14px; border-radius:50%; background:var(--corail);
+    box-shadow:0 0 0 5px rgba(226,115,79,0.18);
+  }
+  .marque span{ font-size:15px; letter-spacing:0.02em; color:var(--texte-doux); }
+  h1{ font-size:28px; line-height:1.25; margin:0 0 8px; font-weight:650; }
+  .sous-titre{ color:var(--texte-doux); font-size:15px; margin:0 0 30px; line-height:1.5; }
+  label{ font-size:13px; color:var(--texte-doux); display:block; margin:0 0 6px; }
+  .champ{ margin-bottom:18px; }
+  input{
+    width:100%; padding:14px 16px; border-radius:12px; border:1.5px solid var(--sable-2);
+    background:#fff; font-size:17px; color:var(--nuit); letter-spacing:0.03em;
+    transition:border-color .15s ease;
+  }
+  input:focus{ outline:none; border-color:var(--nuit-2); }
+  #pin{ text-align:center; letter-spacing:0.5em; font-size:22px; }
+  button.principal{
+    width:100%; padding:15px; margin-top:8px; border:none; border-radius:12px;
+    background:var(--nuit); color:var(--sable); font-size:16px; font-weight:600;
+    cursor:pointer; transition:background .15s ease;
+  }
+  button.principal:active{ background:var(--nuit-2); }
+  button.principal:disabled{ opacity:0.55; cursor:default; }
+  .erreur{
+    color:var(--corail-fonce); font-size:14px; margin-top:14px; min-height:18px;
+  }
+
+  /* ---------- ECRAN DE SUIVI ---------- */
+  #ecran-suivi{ display:none; flex-direction:column; height:100%; }
+  header{
+    padding:16px 20px 14px; background:var(--nuit); color:var(--sable);
+    display:flex; align-items:center; justify-content:space-between;
+    flex-shrink:0;
+  }
+  .qui{ display:flex; flex-direction:column; }
+  .qui .nom{ font-size:17px; font-weight:600; }
+  .qui .etat{ font-size:12.5px; color:#B9CFC7; margin-top:2px; display:flex; align-items:center; gap:6px; }
+  .puce{ width:8px; height:8px; border-radius:50%; background:var(--vert-ok); flex-shrink:0; }
+  .puce.attente{ background:#C7A24B; }
+  .puce.perdu{ background:var(--corail); }
+  #deconnexion{
+    background:none; border:none; color:#B9CFC7; font-size:13px; cursor:pointer; padding:6px;
+  }
+  #carte{ flex:1; min-height:0; }
+  footer{
+    background:#fff; border-top:1px solid var(--sable-2); padding:16px 20px 20px;
+    flex-shrink:0;
+  }
+  .ligne-info{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:2px; }
+  .ligne-info .label{ font-size:12.5px; color:var(--texte-doux); }
+  .ligne-info .valeur{ font-size:13px; color:var(--nuit); font-weight:600; }
+  .maj{ font-size:22px; font-weight:650; margin:6px 0 2px; }
+  .maj small{ font-size:14px; font-weight:500; color:var(--texte-doux); }
+
+  .leaflet-popup-content{ font-family:inherit; font-size:13px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ECRAN DE CONNEXION -->
+  <div id="ecran-connexion">
+    <div class="marque"><div class="point"></div><span>Où est mon enfant</span></div>
+    <h1>Suivre le trajet</h1>
+    <p class="sous-titre">Entrez le code de l'appareil de votre enfant et son code à 4 chiffres pour afficher sa position.</p>
+
+    <div class="champ">
+      <label for="childId">Code de l'appareil</label>
+      <input id="childId" type="text" maxlength="6" placeholder="ex. A3F9K2" autocapitalize="characters" autocomplete="off">
+    </div>
+    <div class="champ">
+      <label for="pin">Code à 4 chiffres</label>
+      <input id="pin" type="tel" inputmode="numeric" maxlength="4" placeholder="••••">
+    </div>
+
+    <button class="principal" id="btnConnexion">Suivre</button>
+    <div class="erreur" id="erreurConnexion"></div>
+  </div>
+
+  <!-- ECRAN DE SUIVI -->
+  <div id="ecran-suivi">
+    <header>
+      <div class="qui">
+        <div class="nom" id="nomEnfant">Suivi en cours</div>
+        <div class="etat"><div class="puce" id="puceEtat"></div><span id="texteEtat">Connexion…</span></div>
+      </div>
+      <button id="deconnexion">Changer</button>
+    </header>
+    <div id="carte"></div>
+    <footer>
+      <div class="ligne-info"><span class="label">Précision</span><span class="valeur" id="precision">—</span></div>
+      <div class="maj" id="derniereMaj">—</div>
+    </footer>
+  </div>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------
+// À CONFIGURER : adresse de votre serveur (server.js)
+// ex: "https://votre-serveur.example.com" ou "http://192.168.1.10:3000"
+const API_BASE = "http://localhost:3000";
+// ---------------------------------------------------------------
+
+const INTERVALLE_RAFRAICHISSEMENT = 8000; // 8s
+const FENETRE_HISTORIQUE_MS = 6 * 60 * 60 * 1000; // 6h de trace au sol
+
+let session = null; // { childId }
+let carte, marqueur, cercle, trace, intervalleId;
+
+const $ = (id) => document.getElementById(id);
+
+$('childId').addEventListener('input', (e) => {
+  e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+});
+$('pin').addEventListener('input', (e) => {
+  e.target.value = e.target.value.replace(/[^0-9]/g, '');
+});
+
+$('btnConnexion').addEventListener('click', connecter);
+$('deconnexion').addEventListener('click', deconnecter);
+
+async function connecter(){
+  const childId = $('childId').value.trim();
+  const pin = $('pin').value.trim();
+  const erreurEl = $('erreurConnexion');
+  erreurEl.textContent = '';
+
+  if (childId.length < 4){
+    erreurEl.textContent = "Vérifiez le code de l'appareil.";
+    return;
+  }
+  if (pin.length !== 4){
+    erreurEl.textContent = "Le code à 4 chiffres est incomplet.";
+    return;
+  }
+
+  const btn = $('btnConnexion');
+  btn.disabled = true;
+  btn.textContent = 'Connexion…';
+
+  try{
+    const res = await fetch(`${API_BASE}/api/children/${childId}/verify-pin`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ pin })
+    });
+
+    if (res.status === 404){
+      erreurEl.textContent = "Aucun appareil ne correspond à ce code.";
+      return;
+    }
+    const data = await res.json();
+    if (!data.valid){
+      erreurEl.textContent = "Code à 4 chiffres incorrect.";
+      return;
+    }
+
+    session = { childId };
+    demarrerSuivi();
+  } catch(err){
+    erreurEl.textContent = "Impossible de contacter le serveur. Vérifiez la connexion.";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Suivre';
+  }
+}
+
+function deconnecter(){
+  clearInterval(intervalleId);
+  session = null;
+  $('ecran-suivi').style.display = 'none';
+  $('ecran-connexion').style.display = 'flex';
+  $('pin').value = '';
+  $('erreurConnexion').textContent = '';
+}
+
+function demarrerSuivi(){
+  $('ecran-connexion').style.display = 'none';
+  $('ecran-suivi').style.display = 'flex';
+
+  if (!carte){
+    carte = L.map('carte', { zoomControl: true }).setView([5.34, -4.02], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; OpenStreetMap'
+    }).addTo(carte);
+
+    const iconeEnfant = L.divIcon({
+      className: '',
+      html: `<div style="width:22px;height:22px;border-radius:50%;background:#E2734F;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,0.35);"></div>`,
+      iconSize: [22, 22],
+      iconAnchor: [11, 11]
+    });
+    marqueur = L.marker([5.34, -4.02], { icon: iconeEnfant }).addTo(carte);
+    cercle = L.circle([5.34, -4.02], { radius: 0, color: '#E2734F', weight: 1, fillOpacity: 0.08 }).addTo(carte);
+    trace = L.polyline([], { color: '#163832', weight: 3, opacity: 0.5 }).addTo(carte);
+  }
+
+  actualiser(true);
+  intervalleId = setInterval(() => actualiser(false), INTERVALLE_RAFRAICHISSEMENT);
+}
+
+function definirEtat(etat){
+  const puce = $('puceEtat');
+  puce.className = 'puce ' + (etat === 'ok' ? '' : etat === 'attente' ? 'attente' : 'perdu');
+  $('texteEtat').textContent =
+    etat === 'ok' ? 'Position à jour' :
+    etat === 'attente' ? 'En attente de la première position' :
+    'Aucune donnée récente';
+}
+
+function formaterHeure(iso){
+  const d = new Date(iso);
+  return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function ilYA(iso){
+  const diffMin = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (diffMin < 1) return "à l'instant";
+  if (diffMin === 1) return 'il y a 1 min';
+  if (diffMin < 60) return `il y a ${diffMin} min`;
+  const h = Math.round(diffMin / 60);
+  return `il y a ${h} h`;
+}
+
+async function actualiser(premierChargement){
+  if (!session) return;
+  const { childId } = session;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/children/${childId}/positions/latest`);
+
+    if (res.status === 404){
+      definirEtat('attente');
+      $('derniereMaj').innerHTML = 'Aucune position reçue <small>pour le moment</small>';
+      return;
+    }
+    if (!res.ok) throw new Error('erreur serveur');
+
+    const p = await res.json();
+    const point = [p.latitude, p.longitude];
+
+    marqueur.setLatLng(point);
+    cercle.setLatLng(point);
+    cercle.setRadius(p.accuracy || 0);
+
+    if (premierChargement) carte.setView(point, 16);
+
+    const ageMs = Date.now() - new Date(p.recorded_at).getTime();
+    definirEtat(ageMs > 15 * 60 * 1000 ? 'perdu' : 'ok');
+
+    $('precision').textContent = p.accuracy ? `± ${Math.round(p.accuracy)} m` : '—';
+    $('derniereMaj').innerHTML = `${formaterHeure(p.recorded_at)} <small>${ilYA(p.recorded_at)}</small>`;
+
+    if (premierChargement) chargerTrace(childId);
+  } catch(err){
+    definirEtat('perdu');
+  }
+}
+
+async function chargerTrace(childId){
+  try{
+    const depuis = new Date(Date.now() - FENETRE_HISTORIQUE_MS).toISOString();
+    const res = await fetch(`${API_BASE}/api/children/${childId}/positions/history?since=${encodeURIComponent(depuis)}`);
+    if (!res.ok) return;
+    const points = await res.json();
+    trace.setLatLngs(points.map(p => [p.latitude, p.longitude]));
+  } catch(err){ /* silencieux : la trace est un bonus, pas critique */ }
+}
+</script>
+</body>
+</html>
